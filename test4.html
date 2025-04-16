@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Booth's and Division Simulator</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 2em;
+      background: linear-gradient(to bottom right, #e6f0ff, #ffffff);
+      color: #333;
+    }
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    input, button {
+      padding: 0.6em;
+      margin: 0.5em 0;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+      width: 80%;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.3em;
+      font-weight: bold;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 1.5em;
+      background: #fff;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 0.8em;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f8ff;
+      font-weight: bold;
+    }
+    #steps {
+      margin-top: 2em;
+    }
+    .tabs {
+      margin-top: 2em;
+      text-align: center;
+    }
+    .tab-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 1em;
+      margin-bottom: 1em;
+    }
+    .tab-buttons button {
+      background-color: #ecf0f1;
+      border: 1px solid #bdc3c7;
+      color: #2c3e50;
+      transition: all 0.3s ease;
+    }
+    .tab-buttons button.active {
+      background-color: #3498db;
+      color: white;
+      border: 1px solid #2980b9;
+    }
+    .tab-content {
+      display: none;
+      margin-top: 1em;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    .input-container {
+      max-width: 500px;
+      margin: auto;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .input-container label {
+      margin-bottom: 0.5em;
+      text-align: center;
+    }
+    .note {
+      text-align: center;
+      margin-top: 1em;
+      font-style: italic;
+      color: #555;
+    }
+    .flowchart {
+      text-align: center;
+      margin-top: 2em;
+    }
+    .flowchart img {
+      max-width: 600px;
+      width: 80%;
+    }
+  </style>
+</head>
+<body>
+  <h1>Booth's and Division Simulator</h1>
+
+  <p class="note"><strong>Note:</strong> Please ensure that the input numbers are within the range of -15 to 15 for both the multiplicand/dividend and multiplier/divisor, as the simulator operates with 5-bit signed binary representation.</p>
+
+  <div class="tabs">
+    <div class="tab-buttons">
+      <button class="tab-button active" onclick="showTab('booth')">Booth's Multiplication</button>
+      <button class="tab-button" onclick="showTab('restoring')">Restoring Division</button>
+      <button class="tab-button" onclick="showTab('nonrestoring')">Non-Restoring Division</button>
+    </div>
+
+    <div class="input-container">
+      <label>Multiplicand / Dividend:
+        <input type="number" id="multiplicand" />
+      </label>
+      <label>Multiplier / Divisor:
+        <input type="number" id="multiplier" />
+      </label>
+    </div>
+
+    <div id="booth" class="tab-content active">
+      <button onclick="simulateBooth()">Simulate Booth Multiplication</button>
+    </div>
+
+    <div id="restoring" class="tab-content">
+      <button onclick="simulateRestoring()">Simulate Restoring Division</button>
+    </div>
+
+    <div id="nonrestoring" class="tab-content">
+      <button onclick="simulateNonRestoring()">Simulate Non-Restoring Division</button>
+    </div>
+  </div>
+
+  <div id="steps"></div>
+
+  <!-- Flowchart Container -->
+  <div class="flowchart" id="flowchart"></div>
+
+  <script>
+    function showTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      event.target.classList.add('active');
+      document.getElementById('steps').innerHTML = '';
+      document.getElementById("flowchart").innerHTML = '';
+    }
+
+    function displayFlowchart(algorithm) {
+      let flowchartContainer = document.getElementById("flowchart");
+      if (algorithm === 'booth') {
+        flowchartContainer.innerHTML = `<img src="booth.png" alt="Booth's Multiplication Flowchart" />`;
+      } else if (algorithm === 'restoring') {
+        flowchartContainer.innerHTML = `<img src="res.png" alt="Restoring Division Flowchart" />`;
+      } else if (algorithm === 'nonrestoring') {
+        flowchartContainer.innerHTML = `<img src="non_res.png" alt="Non-Restoring Division Flowchart" />`;
+      }
+    }
+
+    function toBinary(n, bits) {
+      if (n < 0) {
+        n = (1 << bits) + n;
+      }
+      return n.toString(2).padStart(bits, '0');
+    }
+
+    function simulateBooth() {
+      const m = parseInt(document.getElementById("multiplicand").value);
+      const q = parseInt(document.getElementById("multiplier").value);
+      const stepsDiv = document.getElementById("steps");
+ 
+
+      const bits = 5;
+      let M = toBinary(m, bits);
+      let Q = toBinary(q, bits);
+      let A = '0'.repeat(bits);
+      let Q_1 = '0';
+
+      let table = `<h3>Booth's Multiplication</h3><table><tr><th>Step</th><th>A</th><th>Q</th><th>Q-1</th><th>Operation</th></tr>`;
+
+      function arithmeticRightShift(a, q, q1) {
+        const combined = a + q + q1;
+        const shifted = combined[0] + combined.slice(0, combined.length - 1);
+        return [shifted.slice(0, bits), shifted.slice(bits, bits * 2), shifted.slice(-1)];
+      }
+
+      for (let i = 1; i <= bits; i++) {
+        let operation = "No operation";
+        const Q0 = Q[Q.length - 1];
+
+        if (Q0 === '1' && Q_1 === '0') {
+          A = binarySub(A, M);
+          operation = "A = A - M";
+        } else if (Q0 === '0' && Q_1 === '1') {
+          A = binaryAdd(A, M);
+          operation = "A = A + M";
+        }
+
+        [A, Q, Q_1] = arithmeticRightShift(A, Q, Q_1);
+        table += `<tr><td>${i}</td><td>${A}</td><td>${Q}</td><td>${Q_1}</td><td>${operation}</td></tr>`;
+      }
+
+      const finalBinary = A + Q;
+      const result = parseInt(finalBinary, 2);
+      const finalResult = (m * q) < 0 ? -(~result + 1 & ((1 << (2 * bits)) - 1)) : result;
+
+      if (m >15 || m < -15 || q > 15 || q < -15) {
+        stepsDiv.innerHTML = '<p style="color: red; font-weight: bold;">Error: Please enter the numbers within the specified range.</p>';
+        return;
+      }       
+      table += `</table><p>Final binary result: ${finalBinary}</p><p>Decimal result: ${finalResult}</p>`;
+      stepsDiv.innerHTML = table;
+      displayFlowchart('booth');
+    }
+
+    function simulateRestoring() {
+      let dividend = parseInt(document.getElementById("multiplicand").value);
+      let divisor = parseInt(document.getElementById("multiplier").value);
+      const stepsDiv = document.getElementById("steps");
+      stepsDiv.innerHTML = "";
+
+      const bits = 5;
+      let A = 0;
+      let Q = Math.abs(dividend);
+      let M = Math.abs(divisor);
+      const signQ = Math.sign(dividend) * Math.sign(divisor);
+      let table = `<h3>Restoring Division</h3><table><tr><th>Step</th><th>A (bin)</th><th>Q (bin)</th><th>Operation</th></tr>`;
+
+      for (let i = 1; i <= bits; i++) {
+        A = (A << 1) | ((Q & (1 << (bits - 1))) >> (bits - 1));
+        Q = (Q << 1) & ((1 << bits) - 1);
+        A = A - M;
+        let operation = "A = A - M";
+
+        if (A < 0) {
+          A = A + M;
+          Q = Q & (~1);
+          operation += ", Restore A, Q0 = 0";
+        } else {
+          Q = Q | 1;
+          operation += ", Q0 = 1";
+        }
+
+        table += `<tr><td>${i}</td><td>${toBinary(A, bits)}</td><td>${toBinary(Q, bits)}</td><td>${operation}</td></tr>`;
+      }
+
+      const quotient = signQ < 0 ? -Q : Q;
+      const remainder = dividend < 0 ? -A : A;
+      if (divisor === 0) {
+        stepsDiv.innerHTML = '<p style="color: red; font-weight: bold;">Error: Division by zero is undefined.</p>';
+        return;
+      }
+      if (divisor >15 || divisor < -15 || dividend > 15 || dividend < -15) {
+        stepsDiv.innerHTML = '<p style="color: red; font-weight: bold;">Error: Please enter the numbers within the specified range.</p>';
+        return;
+      }       
+      table += `</table><p>Quotient (bin): ${toBinary(quotient, bits)} (${quotient})</p><p>Remainder (bin): ${toBinary(remainder, bits)} (${remainder})</p>`;
+      stepsDiv.innerHTML = table;
+      displayFlowchart('restoring');
+    }
+
+    function simulateNonRestoring() {
+      let dividend = parseInt(document.getElementById("multiplicand").value);
+      let divisor = parseInt(document.getElementById("multiplier").value);
+      const stepsDiv = document.getElementById("steps");
+      stepsDiv.innerHTML = "";
+
+      const bits = 5;
+      let A = 0;
+      let Q = Math.abs(dividend);
+      let M = Math.abs(divisor);
+      const signQ = Math.sign(dividend) * Math.sign(divisor);
+      let table = `<h3>Non-Restoring Division</h3><table><tr><th>Step</th><th>A (bin)</th><th>Q (bin)</th><th>Operation</th></tr>`;
+
+      for (let i = 1; i <= bits; i++) {
+        A = (A << 1) | ((Q & (1 << (bits - 1))) >> (bits - 1));
+        Q = (Q << 1) & ((1 << bits) - 1);
+        let operation = "";
+
+        if (A >= 0) {
+          A = A - M;
+          operation = "A >= 0: A = A - M";
+        } else {
+          A = A + M;
+          operation = "A < 0: A = A + M";
+        }
+
+        if (A >= 0) {
+          Q = Q | 1;
+          operation += ", Q0 = 1";
+        } else {
+          Q = Q & (~1);
+          operation += ", Q0 = 0";
+        }
+      if (divisor === 0) {
+        stepsDiv.innerHTML = '<p style="color: red; font-weight: bold;">Error: Division by zero is undefined.</p>';
+        return;
+      }
+      if (divisor >15 || divisor < -15 || dividend > 15 || dividend < -15) {
+        stepsDiv.innerHTML = '<p style="color: red; font-weight: bold;">Error: Please enter the numbers within the specified range.</p>';
+        return;
+      }      
+        table += `<tr><td>${i}</td><td>${toBinary(A, bits)}</td><td>${toBinary(Q, bits)}</td><td>${operation}</td></tr>`;
+      }
+
+      if (A < 0) A += M;
+
+      const quotient = signQ < 0 ? -Q : Q;
+      const remainder = dividend < 0 ? -A : A;
+
+      table += `</table><p>Quotient (bin): ${toBinary(quotient, bits)} (${quotient})</p><p>Remainder (bin): ${toBinary(remainder, bits)} (${remainder})</p>`;
+      stepsDiv.innerHTML = table;
+      displayFlowchart('nonrestoring');
+    }
+
+    function binaryAdd(a, b, bits = 5) {
+      const sum = parseInt(a, 2) + parseInt(b, 2);
+      return toBinary(sum & ((1 << bits) - 1), bits);
+    }
+
+    function binarySub(a, b, bits = 5) {
+      const diff = parseInt(a, 2) - parseInt(b, 2);
+      return toBinary(diff & ((1 << bits) - 1), bits);
+    }
+
+  </script>
+</body>
+</html>
